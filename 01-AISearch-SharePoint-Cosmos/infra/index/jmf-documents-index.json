@@ -1,0 +1,66 @@
+{
+  "name": "jmf-documents",
+  "fields": [
+    { "name": "id",               "type": "Edm.String",               "key": true,  "retrievable": true,  "searchable": false, "filterable": true  },
+    { "name": "content",          "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": true,  "analyzer": "en.microsoft" },
+    { "name": "title",            "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": true,  "filterable": true,  "sortable": true },
+    { "name": "url",              "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": false },
+    { "name": "source",           "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": false, "filterable": true  },
+    { "name": "documentType",     "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": false, "filterable": true  },
+    { "name": "dealerCode",       "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": true,  "filterable": true  },
+    { "name": "dealerName",       "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": true,  "filterable": true  },
+    { "name": "amount",           "type": "Edm.Double",               "key": false, "retrievable": true,  "searchable": false, "filterable": true,  "sortable": true },
+    { "name": "status",           "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": false, "filterable": true  },
+    { "name": "createdDate",      "type": "Edm.DateTimeOffset",       "key": false, "retrievable": true,  "searchable": false, "filterable": true,  "sortable": true },
+    { "name": "modifiedDate",     "type": "Edm.DateTimeOffset",       "key": false, "retrievable": true,  "searchable": false, "filterable": true,  "sortable": true },
+    { "name": "keyPhrases",       "type": "Collection(Edm.String)",   "key": false, "retrievable": true,  "searchable": true,  "filterable": true  },
+    { "name": "entities",         "type": "Collection(Edm.String)",   "key": false, "retrievable": true,  "searchable": true,  "filterable": true  },
+    { "name": "language",         "type": "Edm.String",               "key": false, "retrievable": true,  "searchable": false, "filterable": true  },
+    { "name": "contentVector",    "type": "Collection(Edm.Single)",   "key": false, "retrievable": false, "searchable": true,
+      "dimensions": 1536, "vectorSearchProfile": "jmf-vector-profile" },
+    { "name": "metadata_storage_path", "type": "Edm.String",          "key": false, "retrievable": true,  "searchable": false },
+    { "name": "metadata_storage_name", "type": "Edm.String",          "key": false, "retrievable": true,  "searchable": false }
+  ],
+  "vectorSearch": {
+    "algorithms": [
+      {
+        "name": "jmf-hnsw",
+        "kind": "hnsw",
+        "hnswParameters": { "m": 4, "efConstruction": 400, "efSearch": 500, "metric": "cosine" }
+      }
+    ],
+    "profiles": [
+      { "name": "jmf-vector-profile", "algorithm": "jmf-hnsw" }
+    ]
+  },
+  "semantic": {
+    "defaultConfiguration": "jmf-semantic",
+    "configurations": [
+      {
+        "name": "jmf-semantic",
+        "prioritizedFields": {
+          "titleField":          { "fieldName": "title" },
+          "prioritizedContentFields": [{ "fieldName": "content" }],
+          "prioritizedKeywordsFields": [
+            { "fieldName": "keyPhrases" },
+            { "fieldName": "dealerName" }
+          ]
+        }
+      }
+    ]
+  },
+  "scoringProfiles": [
+    {
+      "name": "jmf-boost-recent",
+      "functionAggregation": "sum",
+      "functions": [
+        {
+          "type": "freshness",
+          "fieldName": "modifiedDate",
+          "boost": 5,
+          "freshness": { "boostingDuration": "P30D" }
+        }
+      ]
+    }
+  ]
+}
