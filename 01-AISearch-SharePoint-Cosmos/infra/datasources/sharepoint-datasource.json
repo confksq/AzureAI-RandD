@@ -1,0 +1,25 @@
+{
+  "name": "jmf-sharepoint-datasource",
+  "type": "sharepoint",
+  "credentials": {
+    "connectionString": "SharePointOnlineEndpoint=https://jmfamily.sharepoint.com/sites/InvoiceManagement;ApplicationId=<app-id>;ApplicationSecret=<managed-identity-or-secret>"
+  },
+  "container": {
+    "name": "defaultSiteLibrary",
+    "query": "includeLibraryTemplatesAndTypes=false&includeHiddenFiles=false"
+  },
+  "dataChangeDetectionPolicy": {
+    "@odata.type": "#Microsoft.Azure.Search.HighWaterMarkChangeDetectionPolicy",
+    "highWaterMarkColumnName": "metadata_spo_last_modified"
+  },
+  "dataDeletionDetectionPolicy": {
+    "@odata.type": "#Microsoft.Azure.Search.SoftDeleteColumnDeletionDetectionPolicy",
+    "softDeleteColumnName": "IsDeleted",
+    "softDeleteMarkerValue": "true"
+  },
+  "encryptionKey": null,
+  "identity": {
+    "@odata.type": "#Microsoft.Azure.Search.DataSourceManagedIdentityCredential",
+    "userAssignedIdentity": null
+  }
+}

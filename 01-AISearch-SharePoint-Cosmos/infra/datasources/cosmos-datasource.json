@@ -1,0 +1,24 @@
+{
+  "name": "jmf-cosmos-datasource",
+  "type": "cosmosdb",
+  "credentials": {
+    "connectionString": "AccountEndpoint=https://jmf-cosmos.documents.azure.com:443/;AccountKey=<managed-identity>;Database=jmf-invoices"
+  },
+  "container": {
+    "name": "invoices",
+    "query": "SELECT c.id, c.dealerCode, c.dealerName, c.amount, c.status, c.documentType, c.createdDate, c.modifiedDate, c.content, c._ts FROM c WHERE c._ts > @HighWaterMark"
+  },
+  "dataChangeDetectionPolicy": {
+    "@odata.type": "#Microsoft.Azure.Search.HighWaterMarkChangeDetectionPolicy",
+    "highWaterMarkColumnName": "_ts"
+  },
+  "dataDeletionDetectionPolicy": {
+    "@odata.type": "#Microsoft.Azure.Search.SoftDeleteColumnDeletionDetectionPolicy",
+    "softDeleteColumnName": "isDeleted",
+    "softDeleteMarkerValue": "true"
+  },
+  "identity": {
+    "@odata.type": "#Microsoft.Azure.Search.DataSourceManagedIdentityCredential",
+    "userAssignedIdentity": null
+  }
+}
