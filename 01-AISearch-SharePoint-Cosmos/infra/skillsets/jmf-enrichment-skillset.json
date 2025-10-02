@@ -1,0 +1,96 @@
+{
+  "name": "jmf-enrichment-skillset",
+  "description": "AI enrichment pipeline: language detection, entity recognition, key phrase extraction, and vector embedding generation",
+  "cognitiveServices": {
+    "@odata.type": "#Microsoft.Azure.Search.CognitiveServicesByKey",
+    "key": "<azure-ai-services-key>"
+  },
+  "skills": [
+    {
+      "@odata.type": "#Microsoft.Skills.Text.LanguageDetectionSkill",
+      "name": "language-detection",
+      "description": "Detect document language",
+      "context": "/document",
+      "inputs": [{ "name": "text", "source": "/document/content" }],
+      "outputs": [{ "name": "languageCode", "targetName": "language" }]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.SplitSkill",
+      "name": "split-skill",
+      "description": "Split large documents into pages for processing",
+      "context": "/document",
+      "textSplitMode": "pages",
+      "maximumPageLength": 5000,
+      "pageOverlapLength": 200,
+      "inputs": [
+        { "name": "text",         "source": "/document/content" },
+        { "name": "languageCode", "source": "/document/language" }
+      ],
+      "outputs": [{ "name": "textItems", "targetName": "pages" }]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.V3.EntityRecognitionSkill",
+      "name": "entity-recognition",
+      "description": "Extract organizations, people, and locations from each page",
+      "context": "/document/pages/*",
+      "categories": ["Organization", "Person", "Location", "DateTime", "Quantity"],
+      "minimumPrecision": 0.8,
+      "inputs": [
+        { "name": "text",         "source": "/document/pages/*" },
+        { "name": "languageCode", "source": "/document/language" }
+      ],
+      "outputs": [{ "name": "entities", "targetName": "entities" }]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.KeyPhraseExtractionSkill",
+      "name": "key-phrase-extraction",
+      "description": "Extract key phrases from each page",
+      "context": "/document/pages/*",
+      "maxKeyPhraseCount": 20,
+      "inputs": [
+        { "name": "text",         "source": "/document/pages/*" },
+        { "name": "languageCode", "source": "/document/language" }
+      ],
+      "outputs": [{ "name": "keyPhrases", "targetName": "keyPhrases" }]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.AzureOpenAIEmbeddingSkill",
+      "name": "embedding-skill",
+      "description": "Generate vector embeddings using text-embedding-3-small",
+      "context": "/document",
+      "resourceUri": "https://jmf-openai.openai.azure.com",
+      "apiKey": null,
+      "deploymentId": "text-embedding-3-small",
+      "modelName": "text-embedding-3-small",
+      "dimensions": 1536,
+      "inputs": [{ "name": "text", "source": "/document/content" }],
+      "outputs": [{ "name": "embedding", "targetName": "contentVector" }],
+      "authIdentity": {
+        "@odata.type": "#Microsoft.Azure.Search.DataNoneIdentity"
+      }
+    }
+  ],
+  "indexProjections": {
+    "selectors": [
+      {
+        "targetIndexName": "jmf-documents",
+        "parentKeyFieldName": "id",
+        "sourceContext": "/document/pages/*",
+        "mappings": [
+          { "name": "content",      "source": "/document/pages/*" },
+          { "name": "keyPhrases",   "source": "/document/pages/*/keyPhrases" },
+          { "name": "entities",     "source": "/document/pages/*/entities" },
+          { "name": "language",     "source": "/document/language" },
+          { "name": "dealerCode",   "source": "/document/dealerCode" },
+          { "name": "dealerName",   "source": "/document/dealerName" },
+          { "name": "status",       "source": "/document/status" },
+          { "name": "amount",       "source": "/document/amount" },
+          { "name": "title",        "source": "/document/metadata_storage_name" },
+          { "name": "url",          "source": "/document/metadata_storage_path" },
+          { "name": "contentVector","source": "/document/contentVector" }
+        ]
+      }
+    ],
+    "parameters": { "projectionMode": "generatedKeyAsId" }
+  }
+}
