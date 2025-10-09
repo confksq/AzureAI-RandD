@@ -1,0 +1,33 @@
+{
+  "name": "jmf-cosmos-indexer",
+  "dataSourceName": "jmf-cosmos-datasource",
+  "targetIndexName": "jmf-documents",
+  "skillsetName": "jmf-enrichment-skillset",
+  "schedule": { "interval": "PT1H", "startTime": "2025-09-20T00:00:00Z" },
+  "parameters": {
+    "batchSize": 100,
+    "maxFailedItems": 10,
+    "maxFailedItemsPerBatch": 5,
+    "configuration": {
+      "assumeOrderByHighWaterMarkColumn": true,
+      "queryTimeout": "00:05:00"
+    }
+  },
+  "fieldMappings": [
+    { "sourceFieldName": "id",           "targetFieldName": "id" },
+    { "sourceFieldName": "dealerCode",   "targetFieldName": "dealerCode" },
+    { "sourceFieldName": "dealerName",   "targetFieldName": "dealerName" },
+    { "sourceFieldName": "amount",       "targetFieldName": "amount" },
+    { "sourceFieldName": "status",       "targetFieldName": "status" },
+    { "sourceFieldName": "documentType", "targetFieldName": "documentType" },
+    { "sourceFieldName": "createdDate",  "targetFieldName": "createdDate" },
+    { "sourceFieldName": "modifiedDate", "targetFieldName": "modifiedDate" },
+    { "sourceFieldName": "content",      "targetFieldName": "content" }
+  ],
+  "outputFieldMappings": [
+    { "sourceFieldName": "/document/language",           "targetFieldName": "language" },
+    { "sourceFieldName": "/document/contentVector",      "targetFieldName": "contentVector" },
+    { "sourceFieldName": "/document/pages/*/keyPhrases", "targetFieldName": "keyPhrases" },
+    { "sourceFieldName": "/document/pages/*/entities",   "targetFieldName": "entities" }
+  ]
+}

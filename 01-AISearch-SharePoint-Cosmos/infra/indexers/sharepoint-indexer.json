@@ -1,0 +1,40 @@
+{
+  "name": "jmf-sharepoint-indexer",
+  "dataSourceName": "jmf-sharepoint-datasource",
+  "targetIndexName": "jmf-documents",
+  "skillsetName": "jmf-enrichment-skillset",
+  "schedule": { "interval": "PT6H", "startTime": "2025-09-20T02:00:00Z" },
+  "parameters": {
+    "batchSize": 10,
+    "maxFailedItems": 5,
+    "maxFailedItemsPerBatch": 2,
+    "configuration": {
+      "dataToExtract": "contentAndMetadata",
+      "parsingMode": "default",
+      "excludedFileNameExtensions": ".png,.jpg,.jpeg,.gif,.bmp,.tiff",
+      "indexedFileNameExtensions": ".pdf,.docx,.xlsx,.pptx,.txt,.csv",
+      "failOnUnsupportedContentType": false,
+      "failOnUnprocessableDocument": false,
+      "indexStorageMetadataOnlyForOversizedDocuments": true
+    }
+  },
+  "fieldMappings": [
+    { "sourceFieldName": "metadata_storage_path",          "targetFieldName": "id",                  "mappingFunction": { "name": "base64Encode" } },
+    { "sourceFieldName": "metadata_storage_name",          "targetFieldName": "title" },
+    { "sourceFieldName": "metadata_storage_path",          "targetFieldName": "url" },
+    { "sourceFieldName": "metadata_storage_path",          "targetFieldName": "metadata_storage_path" },
+    { "sourceFieldName": "metadata_storage_name",          "targetFieldName": "metadata_storage_name" },
+    { "sourceFieldName": "metadata_storage_last_modified", "targetFieldName": "modifiedDate" },
+    { "sourceFieldName": "metadata_creation_date",         "targetFieldName": "createdDate" }
+  ],
+  "outputFieldMappings": [
+    { "sourceFieldName": "/document/language",       "targetFieldName": "language" },
+    { "sourceFieldName": "/document/contentVector",  "targetFieldName": "contentVector" },
+    { "sourceFieldName": "/document/pages/*/keyPhrases", "targetFieldName": "keyPhrases" },
+    { "sourceFieldName": "/document/pages/*/entities",   "targetFieldName": "entities" }
+  ],
+  "cache": {
+    "storageConnectionString": "DefaultEndpointsProtocol=https;AccountName=jmfsearchcache;AccountKey=<managed-identity>",
+    "enableReprocessing": true
+  }
+}
