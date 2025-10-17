@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>JMF.AISearch.Setup</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Search.Documents"             Version="11.6.0" />
+    <PackageReference Include="Azure.Identity"                     Version="1.13.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json"    Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection"   Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console"       Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting"               Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.Development.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="infra/**/*.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
