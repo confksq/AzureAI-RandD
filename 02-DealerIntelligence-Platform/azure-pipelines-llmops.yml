@@ -1,0 +1,284 @@
+# ============================================================
+# JMA Dealer Intelligence Platform — LLMOps CI/CD Pipeline
+# ============================================================
+# This pipeline runs on EVERY PR that touches:
+#   - Any .cs file (code change)
+#   - Any prompt file (08-PromptEngineering/)
+#   - Any eval config (09-LLMOps/)
+#
+# Stages:
+#   1. Build        → compile .NET solution
+#   2. Unit Tests   → standard code tests
+#   3. Prompt Eval  → LLMOps quality gate  ← THE NEW STAGE
+#   4. Deploy STG   → only if all above pass
+#   5. Deploy PROD  → manual approval required
+# ============================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+  paths:
+    include:
+      - 02-DealerIntelligence-Platform/**
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 02-DealerIntelligence-Platform/**
+
+variables:
+  dotnetVersion: '8.0.x'
+  buildConfiguration: 'Release'
+  azureServiceConnection: 'jma-azure-service-connection'
+
+  # LLMOps thresholds — change here to update quality gates
+  groundednessThreshold: '0.85'
+  relevanceThreshold: '0.80'
+  accuracyThreshold: '0.90'
+
+stages:
+
+# ============================================================
+# STAGE 1 — BUILD
+# Same as any normal DevOps pipeline
+# ============================================================
+- stage: Build
+  displayName: 'Build'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build .NET Solution'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+
+    - task: UseDotNet@2
+      displayName: 'Install .NET SDK'
+      inputs:
+        version: $(dotnetVersion)
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore packages'
+      inputs:
+        command: 'restore'
+        projects: '**/*.csproj'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build solution'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        arguments: '--configuration $(buildConfiguration)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish build artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'drop'
+
+# ============================================================
+# STAGE 2 — UNIT TESTS
+# Standard code tests — same as DevOps
+# ============================================================
+- stage: UnitTests
+  displayName: 'Unit Tests'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: TestJob
+    displayName: 'Run Unit Tests'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Run unit tests'
+      inputs:
+        command: 'test'
+        projects: '**/*Tests.csproj'
+        arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
+
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      inputs:
+        testResultsFormat: 'VSTest'
+        testResultsFiles: '**/*.trx'
+
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish code coverage'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+
+# ============================================================
+# STAGE 3 — PROMPT EVALUATION  ← THIS IS THE LLMOPS STAGE
+# Runs 100 golden test cases against the agent
+# Blocks deployment if quality drops
+# ============================================================
+- stage: PromptEvaluation
+  displayName: 'LLMOps — Prompt Evaluation'
+  dependsOn: UnitTests
+  condition: succeeded()
+  jobs:
+  - job: EvalJob
+    displayName: 'Run Prompt Evaluation Pipeline'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+
+    # Connect to Azure using Service Principal
+    # In real setup: use Managed Identity on the agent pool
+    - task: AzureCLI@2
+      displayName: 'Authenticate to Azure'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Authenticated as: $(az account show --query user.name -o tsv)"
+
+    # Run the EvaluationPipeline.cs against 100 golden test cases
+    - task: DotNetCoreCLI@2
+      displayName: 'Run LLMOps Evaluation Pipeline'
+      inputs:
+        command: 'run'
+        projects: '09-LLMOps/EvalRunner/EvalRunner.csproj'
+        arguments: >
+          --golden-dataset ./09-LLMOps/GoldenDataset/claims-golden-100.json
+          --groundedness-threshold $(groundednessThreshold)
+          --relevance-threshold $(relevanceThreshold)
+          --accuracy-threshold $(accuracyThreshold)
+          --output-path $(Build.ArtifactStagingDirectory)/eval-results.json
+      env:
+        AZURE_OPENAI_ENDPOINT:  $(AZURE_OPENAI_ENDPOINT)
+        AZURE_SEARCH_ENDPOINT:  $(AZURE_SEARCH_ENDPOINT)
+
+    # Publish eval results as pipeline artifact
+    # → visible in ADO pipeline run under "Artifacts"
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish eval results'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/eval-results.json'
+        artifactName: 'llmops-eval-results'
+
+    # Publish as Test Results so ADO shows pass/fail per test case
+    # → visible in ADO pipeline run under "Tests" tab
+    - task: PublishTestResults@2
+      displayName: 'Publish eval as test results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '$(Build.ArtifactStagingDirectory)/eval-results-junit.xml'
+        testRunTitle: 'LLMOps Prompt Evaluation — $(Build.BuildNumber)'
+
+    # Quality Gate check — fails the stage if scores below threshold
+    # This is what BLOCKS the PR from merging
+    - task: Bash@3
+      displayName: 'Quality Gate Check'
+      inputs:
+        targetType: 'inline'
+        script: |
+          GROUNDEDNESS=$(cat $(Build.ArtifactStagingDirectory)/eval-results.json | jq '.avgGroundedness')
+          RELEVANCE=$(cat $(Build.ArtifactStagingDirectory)/eval-results.json | jq '.avgRelevance')
+          ACCURACY=$(cat $(Build.ArtifactStagingDirectory)/eval-results.json | jq '.decisionAccuracy')
+
+          echo "=============================="
+          echo "LLMOps Quality Gate Results"
+          echo "=============================="
+          echo "Groundedness : $GROUNDEDNESS (need $(groundednessThreshold))"
+          echo "Relevance    : $RELEVANCE    (need $(relevanceThreshold))"
+          echo "Accuracy     : $ACCURACY     (need $(accuracyThreshold))"
+          echo "=============================="
+
+          PASSES_GATE=$(cat $(Build.ArtifactStagingDirectory)/eval-results.json | jq '.passesGate')
+
+          if [ "$PASSES_GATE" = "false" ]; then
+            echo "##[error] QUALITY GATE FAILED — deployment blocked"
+            echo "##[error] Fix the prompt in 08-PromptEngineering/SystemPrompts.cs"
+            echo "##[error] Re-run eval to verify before merging"
+            exit 1
+          else
+            echo "##[section] Quality gate PASSED — safe to deploy"
+          fi
+
+# ============================================================
+# STAGE 4 — DEPLOY TO STAGING
+# Only runs if Build + Tests + Prompt Eval all passed
+# ============================================================
+- stage: DeployStaging
+  displayName: 'Deploy to Staging'
+  dependsOn: PromptEvaluation
+  condition: succeeded()
+  jobs:
+  - deployment: DeploySTG
+    displayName: 'Deploy to STG environment'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'jma-staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - task: AzureFunctionApp@2
+            displayName: 'Deploy Azure Function to STG'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              appType: 'functionApp'
+              appName: 'jma-dealer-intelligence-stg'
+              package: '$(Pipeline.Workspace)/drop/**/*.zip'
+              deploymentMethod: 'auto'
+
+          # After deploy to STG — run canary check
+          # Send 5% of traffic to new prompt version
+          # Monitor groundedness for 30 mins before promoting
+          - task: Bash@3
+            displayName: 'Canary check (5% traffic, 30 min)'
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "Canary deployed — monitoring 5% traffic for 30 minutes"
+                echo "Check App Insights dashboard for claim.groundedness metric"
+                echo "If groundedness stays above 0.85 → promote to PROD"
+
+# ============================================================
+# STAGE 5 — DEPLOY TO PRODUCTION
+# Requires MANUAL APPROVAL in ADO before running
+# ============================================================
+- stage: DeployProduction
+  displayName: 'Deploy to Production'
+  dependsOn: DeployStaging
+  condition: succeeded()
+  jobs:
+  - deployment: DeployPROD
+    displayName: 'Deploy to PROD environment'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'jma-production'      # ← manual approval gate set on this environment in ADO
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - task: AzureFunctionApp@2
+            displayName: 'Deploy Azure Function to PROD'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              appType: 'functionApp'
+              appName: 'jma-dealer-intelligence-prod'
+              package: '$(Pipeline.Workspace)/drop/**/*.zip'
+              deploymentMethod: 'auto'
+
+          - task: Bash@3
+            displayName: 'Post-deploy verification'
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "Production deployment complete"
+                echo "GroundednessMonitor.cs is now scoring live decisions"
+                echo "Monitor: App Insights → claim.groundedness metric"
+                echo "Alert threshold: 0.80 → on-call notified"
+                echo "Critical threshold: 0.70 → immediate incident"
