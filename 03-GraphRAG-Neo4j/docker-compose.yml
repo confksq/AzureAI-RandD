@@ -1,0 +1,29 @@
+services:
+  neo4j:
+    image: neo4j:5
+    container_name: graphrag-neo4j
+    ports:
+      - "7474:7474"   # HTTP — Neo4j Browser UI
+      - "7687:7687"   # Bolt — driver protocol used by py2neo / neo4j
+    environment:
+      NEO4J_AUTH: neo4j/password123
+      # APOC ships the helper procedures used by most GraphRAG tutorials.
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 1G
+      NEO4J_server_memory_heap_max__size: 2G
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      # Neo4j accepts Bolt connections a few seconds after the HTTP port opens,
+      # so wait on HTTP before running ingest.py.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+  neo4j_logs:

@@ -1,0 +1,15 @@
+# Neo4j access
+py2neo>=2021.2.4            # used by ingest.py (see README — unmaintained, pinned for parity)
+neo4j>=5.28.0               # official driver, used by graph_rag.py for Cypher
+
+# LLM + orchestration
+openai>=1.50.0
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0  # provides langchain_community.vectorstores.FAISS
+
+# Vector store
+faiss-cpu>=1.8.0
+
+# Config
+python-dotenv>=1.0.0

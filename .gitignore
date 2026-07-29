@@ -1,0 +1,26 @@
+# Secrets — never commit real keys. Use the .env.example files instead.
+.env
+.env.local
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Vector stores / local indexes
+faiss_index/
+*.faiss
+
+# .NET (modules 01–02)
+bin/
+obj/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
