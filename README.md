@@ -1,21 +1,11 @@
-# AzureAI Research & Development
+# AzureAI-RandD — Azure & Multi-Cloud AI Engineering
 
-Enterprise-grade Azure AI projects — AI Search, Cognitive Services, and intelligent data pipelines.
-
-## Projects
-
-| # | Project | Stack | Status |
-|---|---------|-------|--------|
-| 01 | [AI Search — SharePoint + Cosmos DB](./01-AISearch-SharePoint-Cosmos/) | Azure AI Search · SharePoint Online · Cosmos DB · AI Skillset · C# | ✅ Complete |
-
-## Tech Stack
-
-- **Language:** C# / .NET 9
-- **AI Search:** Azure AI Search (vector + hybrid)
-- **Data Sources:** SharePoint Online · Azure Cosmos DB (SQL API)
-- **AI Enrichment:** Azure AI Services (entity extraction, key phrases, embeddings)
-- **Auth:** Managed Identity (DefaultAzureCredential — zero secrets in code)
-- **Monitoring:** Azure Application Insights
+| # | Module | Stack | Language |
+|---|--------|-------|----------|
+| 01 | [AI Search SharePoint Cosmos](./01-AISearch-SharePoint-Cosmos/) | Azure AI Search, Cosmos DB | C# |
+| 02 | [Dealer Intelligence Platform](./02-DealerIntelligence-Platform/) | Azure AI Foundry | C# |
+| 03 | [GraphRAG Neo4j](./03-GraphRAG-Neo4j/) | GraphRAG, Neo4j 5.x, OpenAI | Python |
+| 04 | [Bedrock MultiCloud](./04-Bedrock-MultiCloud/) | Amazon Bedrock, boto3 1.43 | Python |
 
 ## Author
 
