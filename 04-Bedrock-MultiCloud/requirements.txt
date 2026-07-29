@@ -1,0 +1,10 @@
+# AWS SDK — pinned as specified
+boto3==1.43.0
+
+# Orchestration + vector store
+langchain>=0.3.0
+langchain-community>=0.3.0   # provides langchain_community.vectorstores.FAISS
+faiss-cpu>=1.8.0
+
+# Config
+python-dotenv>=1.0.0
